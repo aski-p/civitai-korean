@@ -10,3 +10,13 @@
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif;
 }
+
+@layer components {
+  .btn-primary {
+    @apply bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-xl transition-colors duration-200;
+  }
+  
+  .feature-card {
+    @apply bg-white rounded-2xl shadow-lg p-8 flex items-center gap-4 transition-transform hover:scale-105;
+  }
+}
