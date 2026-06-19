@@ -1,42 +1,29 @@
-import { createClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 interface ImgItem { id: string; filename: string; url: string }
 
 export async function GET() {
+  // 로컬 ComfyUI output 폴더에서 현재 이미지 읽기 (프로그래밍 서버 기준)
+  const imgsList: ImgItem[] = []
   try {
-    const supabase: any = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-    // 1) profile_photos from Supabase
-    const photosRes: any = await supabase.from("profile_photos").select("*");
-    if (!photosRes.error && photosRes.data?.length > 0) {
-      return NextResponse.json({ source: "supabase", count: photosRes.data.length, images: photosRes.data.map((p: any) => ({ id: p.id, filename: p.filename || p.id, url: p.image_url || p.url })) });
-    }
-
-    // 2) sub_agents avatars from Supabase
-    const agentsRes: any = await supabase.from("sub_agents").select("id,name,avatar_url");
-    if (!agentsRes.error) {
-      const hasAvatars = (agentsRes.data || []).filter((a: any) => a.avatar_url);
-      if (hasAvatars.length > 0) {
-        return NextResponse.json({ source: "sub_agents", count: hasAvatars.length, images: hasAvatars.map((a: any) => ({ id: a.id, filename: a.name, url: a.avatar_url })) });
+    const fsP: any = await import("fs/promises")
+    const files = await fsP.readdir("/home/aski/ComfyUI/output/")
+    for (const f of files) {
+      if ((f.startsWith("prof_") || f.startsWith("profile_")) && f.endsWith(".png")) {
+        imgsList.push({ id: f, filename: f, url: `http://127.0.0.1:8188/viewer?filename=${encodeURIComponent(f)}` })
       }
     }
+  } catch { /* 개발 환경에서 실패 시 빈 리스트 리턴 */ }
 
-    // 3) Fallback — local ComfyUI output scan (dev only)
-    const imgsList: ImgItem[] = [];
-    try {
-      const fsP: any = await import("fs/promises");
-      const files = await fsP.readdir("/home/aski/ComfyUI/output/");
-      for (const f of files) {
-        if (f.startsWith("prof_") && f.endsWith(".png")) imgsList.push({ id: f, filename: f, url: `http://127.0.0.1:8188/viewer?filename=${encodeURIComponent(f)}` });
-      }
-    } catch { /* ignore */ }
-
-    return NextResponse.json({ source: imgsList.length > 0 ? "local" : "empty", count: imgsList.length, images: imgsList.slice(0, 200), message: imgsList.length === 0 ? "이미지가 없습니다." : undefined });
-  } catch (err) {
-    return NextResponse.json({ source: "error", count: 0, images: [], error: String(err) }, { status: 500 });
-  }
+  return NextResponse.json({
+    source: imgsList.length > 0 ? "local_comfyui" : "empty",
+    count: imgsList.length,
+    images: imgsList.slice(0, 300),
+    message: imgsList.length === 0 ? "ComfyUI output 폴더에서 이미지를 찾을 수 없습니다. 이미지가 생성되어 있는지 확인하세요." : undefined,
+  })
 }
+
+/*
+ * NAS에 있는 실제 이미지 URL은 아래처럼 사용 가능 (Vercel 서버에서는 로컬 8188 접근 불가 → 별도 S3/R2 저장 권장):
+ * /share/CACHEDEV2_DATA/aski_main/comfyui_photos/prof_*.png
+ */
