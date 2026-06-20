@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 
 // Supabase Admin REST endpoint for DDL injection
 const SP_REST = "https://hyovtguangyykehxwnvp.supabase.co/rest/v1/rpc/run_ddl_schema"
-const SKEY = "sb_secret_l0mN6vgIhJm50v9vUha3Mg_uxuMbDAD" // Service Role Key
+const SKEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "" // Env variable to avoid secret in repo
 
 // DDL Statements (Split to avoid PostgREST limits and handle one-by-one)
 const DDL_QUERIES = [
