@@ -8,6 +8,7 @@ import type { SubAgent, Role } from "@/lib/types"
 interface Message {
   role: string
   content: string
+  timestamp?: string
 }
 
 export default function AgentChatPage() {
@@ -58,7 +59,7 @@ export default function AgentChatPage() {
         } catch {}
       } else {
         const name = localAgent?.name || "에이전트"
-        setMessages([{ role: "assistant", content: `${name}을(를)起動했습니다! 명령을 입력하세요.` }])
+        setMessages([{ role: "assistant", content: `${name}이(가) 준비되었습니다! 명령을 입력하세요.`, timestamp: new Date().toISOString() }])
       }
     } catch (err) {
       console.error("에이전트 정보 로딩 실패:", err)
@@ -72,7 +73,7 @@ export default function AgentChatPage() {
   const sendMessage = async () => {
     if (!input.trim() || sending) return
 
-    const userMsg: Message = { role: "user", content: input.trim() }
+    const userMsg: Message = { role: "user", content: input.trim(), timestamp: new Date().toISOString() }
     const newMessages = [...messages, userMsg]
     setMessages(newMessages)
     setInput("")
@@ -95,14 +96,14 @@ export default function AgentChatPage() {
       }
 
       const data = await res.json()
-      const assistantMsg: Message = { role: "assistant", content: data.reply }
+      const assistantMsg: Message = { role: "assistant", content: data.reply, timestamp: new Date().toISOString() }
       const allMessages = [...newMessages, assistantMsg]
       setMessages(allMessages)
       saveHistory(allMessages)
 
     } catch (err: any) {
       console.error("메시지 전송 실패:", err)
-      const errorMsg: Message = { role: "assistant", content: `❌ 오류: ${err.message}` }
+      const errorMsg: Message = { role: "assistant", content: `❌ 오류: ${err.message}`, timestamp: new Date().toISOString() }
       setMessages([...newMessages, errorMsg])
     } finally {
       setSending(false)
@@ -117,7 +118,7 @@ export default function AgentChatPage() {
   }
 
   const clearChat = () => {
-    setMessages([{ role: "assistant", content: "💬 대화 내역을 초기화했습니다." }])
+    setMessages([{ role: "assistant", content: "💬 대화 내역을 초기화했습니다.", timestamp: new Date().toISOString() }])
     localStorage.removeItem(`chat_history_${agentId}`)
   }
 
@@ -182,7 +183,7 @@ export default function AgentChatPage() {
               }`}>
                 <div className="whitespace-pre-wrap break-words">{msg.content}</div>
                 <div className={`text-xs mt-1 ${msg.role === "user" ? "text-purple-200" : "text-slate-400"}`}>
-                  {new Date().toLocaleTimeString("ko-KR")}
+                  {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString("ko-KR") : new Date().toLocaleTimeString("ko-KR")}
                 </div>
               </div>
             </div>

@@ -1,4 +1,4 @@
- "use client"
+"use client"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Header from "@/components/Header"
@@ -8,7 +8,6 @@ import type { Role } from "@/lib/types"
 
 interface ImgItem { id: string; filename: string; url: string }
 
-/* === Agent Register Page with Image Picker === */
 export default function RegisterAgentPage() {
   const router = useRouter()
   const [name, setName] = useState("")
@@ -27,7 +26,6 @@ export default function RegisterAgentPage() {
 
   useEffect(() => {
     fetch("/api/roles").then(r => r.json()).then(setRoles).catch(console.error)
-    // Load profile images from API
     fetch("/api/profile-images")
       .then(r => r.json())
       .then(data => {
@@ -37,7 +35,7 @@ export default function RegisterAgentPage() {
       .catch(() => setImgLoading(false))
   }, [])
 
-  // Ollma 연결 테스트
+  // Ollama 연결 테스트
   const testOllama = async () => {
     if (!name) return
     setTesting(true)
@@ -46,20 +44,20 @@ export default function RegisterAgentPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "qwen3-coder:30b",
+          model: "qwen3.6:27b",
           messages: [
             { role: "system", content: `너는 "${name}"이라는 이름의 AI 에이전트다. 간단히 자기소개를 하세요.` },
-            { role: "user", content: "안녕! 너 뭐해?" },
+            { role: "user", content: "안녕! 뭐 할 거야?" },
           ],
           stream: false,
         }),
-      )
+      })
       const data = await res.json()
       setOllamaTest(data.message?.content || "연결 성공!")
     } catch (err: any) {
-      setOllamaTt(`❌ 연결 실패: ${err.message}`)
+      setOllamaTest(`❌ 연결 실패: ${err.message}`)
     } finally {
-      stTesting(false)
+      setTesting(false)
     }
   }
 
@@ -74,7 +72,7 @@ export default function RegisterAgentPage() {
         return router.push("/login")
       }
 
-      const res = awit fetch("/api/agents", {
+      const res = await fetch("/api/agents", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -83,7 +81,7 @@ export default function RegisterAgentPage() {
           description: description || null,
           avatar_url: avatarUrl || selectedPreviewUrl || null,
           user_id: session.user.id,
-  }),
+        }),
       })
 
       if (!res.ok) {
@@ -92,7 +90,6 @@ export default function RegisterAgentPage() {
       }
 
       const agent = await res.json()
-
       await new Promise(resolve => setTimeout(resolve, 500))
       router.push(`/agents/chat/${agent.id}`)
     } catch (err: any) {
@@ -102,123 +99,156 @@ export default function RegisterAgentPage() {
     }
   }
 
- return (
-    <div className="min-h-screen">
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950">
       <Header />
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
         {/* Back link */}
-        <Link href="/agents" className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-700 font-medium mb-6">
-          ← 에이전트 목록으로 돌아가기
+        <Link href="/agents" className="inline-flex items-center gap-1 text-indigo-400 hover:text-indigo-300 font-medium mb-6 transition-colors">
+          <span>←</span> 에이전트 목록으로 돌아가기
         </Link>
 
-        <h1 className="text-3xl font-extrabold text-slate-900 mb-2">🤖 새 에이전트 등록</h1>
-        <p className="text-slate 500 mb-8">프��ofile 이미지로 AI 에이전트를 만들 수 있습니다.</p>
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl md:text-4xl font-extrabold bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+            🤖 새 에이전트 등록
+          </h1>
+          <p className="text-slate-400 mt-2">에이전트의 이름, 역할, 아바타를 설정하세요</p>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Name */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-4">
-            <h3 className="font-bold text-slate-900 flex items-center gap-2">❶ 기본 정보</h3>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">이름 *</label>
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)} required
-                maxLength={50} placeholder="예: 요한나, 김채원..."
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-lg" />
-              <p className="text-xs text-slate-400 mt-1">이름으로 직접 명령할 수 있어요</p>
-            </div>
+          {/* Basic Info Card */}
+          <div className="rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 to-slate-900/80 backdrop-blur-sm overflow-hidden">
+            <div className="h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
+            <div className="p-6 space-y-5">
+              <h3 className="font-bold text-white flex items-center gap-2">
+                <span className="w-7 h-7 rounded-lg bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-sm">①</span>
+                기본 정보
+              </h3>
 
-            {/* Ollama test */}
-            {name && (
-              <div className="flex items-center gap-3">
-                <button type="button" onClick={testOllam} disabled={testing}
-                  className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${
-                    ollamaTest ? "bg-green-500 text-white" : "bg-purple-100 text-purple-700 hover:bg-purp le-200"
-                  }`}>
-                  {testing ? "🔄 Ollama 테스트 중..." : (ollamaTest ? "✅ 연결 성공!" : "🧪 Ollama 연결 테스트")}
-                </button>
-                {ollamaTest && (
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center gap-2">
-                    <span role="img" aria-label="에이전트">🤖</span>
-                    <p className="text-sm text-slate-800 font-medium"><strong>{name}:</strong> {ollamaTest}</p>
-                  </div>
-                )}
+              {/* Name */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-300 mb-2">이름 *</label>
+                <input type="text" value={name} onChange={(e) => setName(e.target.value)} required
+                  maxLength={50} placeholder="예: 요한나, 김채원..."
+                  className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 focus:border-transparent transition-all" />
               </div>
-            )}
 
-            {/* Role select */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">역할</label>
-              <select value={roleId} onChange={(e) => setRoleId(e.target.value)}
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500">
-                <option value="">직접 선택</option>
-                {roles.map(r => (
-                  <option key={r.id} value={r.id}>{r.name}</option>
-                ))}
-              </select>
+              {/* Ollama test */}
+              {name && (
+                <div className="flex flex-col gap-3">
+                  <button type="button" onClick={testOllama} disabled={testing}
+                    className={`self-start px-4 py-2 rounded-lg font-bold text-sm transition-all ${testing ? "bg-indigo-500/30 text-indigo-300" : ollamaTest ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700"}`}>
+                    {testing ? "🔄 테스트 중..." : ollamaTest && !ollamaTest.startsWith("❌") ? "✅ 연결 확인됨!" : "🧪 Ollama 연결 테스트"}
+                  </button>
+                  {ollamaTest && (
+                    <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+                      <div className="flex items-start gap-3">
+                        <span role="img" aria-label="에이전트">🤖</span>
+                        <div>
+                          <p className="text-sm font-bold text-indigo-400 mb-1">{name}:</p>
+                          <p className="text-sm text-slate-300">{ollamaTest}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Role select */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-300 mb-2">역할</label>
+                <select value={roleId} onChange={(e) => setRoleId(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/60 focus:border-transparent transition-all appearance-none">
+                  <option value="">직접 선택</option>
+                  {roles.map(r => (
+                    <option key={r.id} value={r.id}>{r.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-300 mb-2">설명</label>
+                <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3}
+                  placeholder="이 에이전트의 주요 역할과 특기를 적어보세요..."
+                  className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 focus:border-transparent transition-all resize-none" />
+              </div>
+
+              {/* Avatar url */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-300 mb-2">아바타 URL</label>
+                <input type="url" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)}
+                  placeholder="URL 입력 또는 아래 이미지 선택..."
+                  className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 focus:border-transparent transition-all" />
+              </div>
             </div>
-
-            {/* Description */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">설명</label>
-              <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3}
-                placeholder="예: 퍼블리셔, 기획자..."
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500" />
-            </div>
-
-            {/* Avatar url */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">아바타 URL</label>
-              <input type="url" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)}
-                placeholder="URL 또는 아래 이미지 선택..."
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500" />
-            </div>
-
           </div>
 
-          {/* === Profile Image Picker === */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-4">
-            <h3 className="font-bold text-slate-900 flex items-center gap-2">❷ 프로필 이미지 선택</h3>
-            {imgLoading && <div className="text-center py-8 bg-slate-50 rounded-xl animate-pulse">이미지 로딩 중...</div>}
-            {!imgLoading && images.length === 0 && (
-              <p className="text-red-500 text-sm bg-red-50 p-4 rounded-xl border border-red-200">프로필 이미지가 없습니다. ComfyUI에서 이미지를 생성해주세요.</p>
-            )}
-            {!imgLoading && images.length > 0 && (
-              <>
-                {/* Preview */}
-                {selectedPreviewUrl && (
-                  <div className="mb-4 flex justify-center">
-                    <div className="relative">
-                      <img src={selectedPreviewUrl} alt="Selected preview"
-                        className="max-h-48 rounded-xl border-4 border-purple-500 shadow-lg" />
-                      <div className="absolute -top-1 -right-1 bg-green-500 text-white w-6 h-6 flex items-center justify-center rounded-full font-bold">✓</div>
-                    </div>
-                  </div>
-                )}
+          {/* Profile Image Picker */}
+          <div className="rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 to-slate-900/80 backdrop-blur-sm overflow-hidden">
+            <div className="h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500" />
+            <div className="p-6 space-y-4">
+              <h3 className="font-bold text-white flex items-center gap-2">
+                <span className="w-7 h-7 rounded-lg bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-sm">②</span>
+                프로필 이미지 선택
+              </h3>
 
-                {/* Image Grid (3 cols responsive) */}
-                <div className="grid grid-cols-3 gap-2 max-h-96 overflow-y-auto p-1 bg-slate-50 rounded-xl border border-slate-400">
-                  {images.map(img => (
-                    <div key={img.id} onClick={() => {
-                      setSelectedPreviewUrl(img.url)
-                      setAvatarUrl(img.filename.includes("prof_") ? img.url : `/nas/profiles/${img.filename}`)
-                    }}
-                      className={`cursor-pointer hover:opacity-80 transition-transform transform hover:scale-[1.01] ${(
-                        selectedPreviewUrl === img.url || avatarUrl === img.filename || avatarUrl === img.url
-                      ) ? `ring-2 ring-pink-400 rounded-lg` : ""
-                      }}>
-                      <img src={img.url} alt={img.filename} className="w-full h-auto aspect-[3/4] object-cover rounded-lg border-2 border-slate-100" />
-                    </div>
-                  ))}
+              {imgLoading && (
+                <div className="text-center py-8 bg-slate-800/30 rounded-xl animate-pulse border border-slate-700/30">
+                  이미지 로딩 중...
                 </div>
+              )}
 
-                <p className="te xt-xs text-slate-400">총 {images.length}개 프로필 이미지 — 클릭하면 선택됩니다 ✨</p>
-              </>
-            )}
+              {!imgLoading && images.length === 0 && (
+                <p className="text-amber-400 text-sm bg-amber-500/10 p-4 rounded-xl border border-amber-500/20">
+                  프로필 이미지가 없습니다. ComfyUI에서 이미지를 생성해주세요.
+                </p>
+              )}
+
+              {!imgLoading && images.length > 0 && (
+                <>
+                  {/* Selected Preview */}
+                  {selectedPreviewUrl && (
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="relative group">
+                        <img src={selectedPreviewUrl} alt="선택된 미리보기"
+                          className="w-32 h-40 object-cover rounded-xl border-2 border-indigo-500 shadow-lg shadow-indigo-500/25 transition-all" />
+                        <div className="absolute -top-1 -right-1 bg-emerald-500 text-white w-6 h-6 flex items-center justify-center rounded-full font-bold text-xs shadow-lg">✓</div>
+                      </div>
+                      <span className="text-xs text-indigo-400 font-medium">선택됨</span>
+                    </div>
+                  )}
+
+                  {/* Image Grid */}
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-[400px] overflow-y-auto p-1 bg-slate-800/20 rounded-xl border border-slate-700/30">
+                    {images.map(img => (
+                      <div key={img.id} onClick={() => {
+                        setSelectedPreviewUrl(img.url)
+                        setAvatarUrl(img.filename.includes("prof_") ? img.url : `/nas/profiles/${img.filename}`)
+                      }}
+                        className={`cursor-pointer group relative rounded-lg overflow-hidden transition-all ${selectedPreviewUrl === img.url ? "ring-2 ring-pink-400 scale-[1.02]" : "hover:scale-[1.02] hover:ring-1 hover:ring-indigo-400/50"}`}>
+                        <img src={img.url} alt={img.filename} className="w-full h-auto aspect-[3/4] object-cover rounded-lg" />
+                        {selectedPreviewUrl === img.url && (
+                          <div className="absolute inset-0 bg-pink-500/10 flex items-center justify-center">
+                            <div className="bg-pink-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs">✓</div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <p className="text-xs text-slate-500">총 {images.length}개 프로필 이미지 — 클릭하면 선택됩니다 ✨</p>
+                </>
+              )}
+            </div>
           </div>
 
           {/* Submit */}
           <button type="submit" disabled={loading || !name}
-            className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold rounded-xl px-8 py-4 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-lg">
+            className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white font-bold rounded-xl px-8 py-4 hover:shadow-lg hover:shadow-purple-500/25 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-[0.98]">
             {loading ? "⏳ 등록 중..." : "✅ 에이전트 등록하기"}
           </button>
 

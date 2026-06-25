@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "qwen3-coder:30b",
+          model: "qwen3.6:27b",
           messages: [
             { role: "system", content: `너는 "${name}"이라는 이름의 AI 에이전트다. 간단한 자기소개를 해라.` },
             { role: "user", content: "안녕?" },

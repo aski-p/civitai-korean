@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "qwen3-coder:30b",
+        model: "qwen3.6:27b",
         messages,
         stream: false,
         options: {

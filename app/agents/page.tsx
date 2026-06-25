@@ -2,14 +2,13 @@
 import Header from "@/components/Header"
 import Link from "next/link"
 import { useEffect, useState } from "react"
-import type { SubAgent, Role, Task } from "@/lib/types"
+import type { SubAgent, Role } from "@/lib/types"
 
 export default function AgentsPage() {
   const [agents, setAgents] = useState<SubAgent[]>([])
   const [roles, setRoles] = useState<Role[]>([])
-  const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
-  const [stats, setStats] = useState({ total: 0, active: 0, idle: 0, busy: 0, offline: 0 })
+  const [filter, setFilter] = useState<string>("all")
 
   useEffect(() => {
     loadData()
@@ -17,155 +16,176 @@ export default function AgentsPage() {
 
   const loadData = async () => {
     try {
-      const [aRes, rRes, tRes] = await Promise.all([
+      const [aRes, rRes] = await Promise.all([
         fetch("/api/agents"),
         fetch("/api/roles"),
-        fetch("/api/tasks?order=created_at.desc&limit=20").then(r => r.json()).catch(() => []),
       ])
-
-      const agentsData = await aRes.ok ? await aRes.json() : []
-      const rolesData = await rRes.ok ? await rRes.json() : []
-
-      setAgents(agentsData)
-      setRoles(rolesData)
-      setTasks(tRes || [])
-
-      setStats({
-        total: agentsData.length,
-        active: agentsData.filter((a: SubAgent) => a.status === "active").length,
-        idle: agentsData.filter((a: SubAgent) => a.status === "idle").length,
-        busy: agentsData.filter((a: SubAgent) => a.status === "busy").length,
-        offline: agentsData.filter((a: SubAgent) => a.status === "offline").length,
-      })
+      const agents = aRes.ok ? await aRes.json() : []
+      const roles = rRes.ok ? await rRes.json() : []
+      setAgents(agents)
+      setRoles(roles)
     } finally {
       setLoading(false)
     }
   }
 
   const getRole = (roleId?: string | null) => {
-    if (!roleId) return { name: "미지정", icon: "🎭", color: "#94a3b8" }
-    return roles.find((r: Role) => r.id === roleId) || { name: "알 수 없음", icon: "❓", color: "#666" }
+    if (!roleId) return { name: "미지정", icon: "🎭", color: "#6366f1" }
+    return roles.find((r: Role) => r.id === roleId) || { name: "알 수 없음", icon: "❓", color: "#6b7280" }
   }
 
-  const statusColors = {
-    active: "bg-green-100 text-green-700",
-    idle: "bg-slate-100 text-slate-600",
-    busy: "bg-yellow-100 text-yellow-700",
-    offline: "bg-red-100 text-red-700",
+  const filterCounts = {
+    all: agents.length,
+    active: agents.filter(a => a.status === "active").length,
+    busy: agents.filter(a => a.status === "busy").length,
+    idle: agents.filter(a => a.status === "idle").length,
+    offline: agents.filter(a => a.status === "offline").length,
   }
 
-  const statusLabels = { active: "활성화", idle: "대기중", busy: "작업중", offline: "오프라인" }
+  const filteredAgents = filter === "all" ? agents : agents.filter(a => a.status === filter)
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><p>로딩 중...</p></div>
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950">
+        <Header />
+        <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+          <div className="text-center">
+            <div className="w-12 h-12 border-4 border-indigo-400/30 border-t-indigo-400 rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-slate-400 font-medium">에이전트 로딩 중...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950">
       <Header />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        {/* Top bar */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-extrabold text-slate-900 mb-2">🤖 서브 에이전트 관리</h1>
-            <p className="text-slate-500">에이전트를 등록하고 롤을 부여하며 업무를 투입하세요</p>
+            <h1 className="text-3xl md:text-4xl font-extrabold bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+              에이전트 제어실
+            </h1>
+            <p className="text-slate-500 mt-1">에이전트를 등록하고 상태를 관리하세요</p>
           </div>
           <Link href="/agents/register"
-            className="bg-gradient-to-r from-purple-600 to-pink-500 text-white px-6 py-3 rounded-xl font-bold hover:shadow-lg hover:scale-105 transition-all shadow-md flex items-center gap-2">
-            ➕ 새 에이전트 등록
+            className="group flex items-center gap-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white px-6 py-3 rounded-xl font-bold hover:shadow-lg hover:shadow-purple-500/25 transition-all active:scale-[0.98]">
+            <span className="text-xl group-hover:rotate-90 transition-transform duration-300">+</span>
+            신규 등록
           </Link>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-5 gap-4 mb-8">
+        {/* Stats row */}
+        <div className="grid grid-cols-5 gap-3 mb-8">
           {[
-            { label: "전체", value: stats.total, emoji: "🤖", bg: "bg-slate-50" },
-            { label: "활성화", value: stats.active, emoji: "✅", bg: "bg-green-50" },
-            { label: "대기중", value: stats.idle, emoji: "⏸️", bg: "bg-slate-100" },
-            { label: "작업중", value: stats.busy, emoji: "🔥", bg: "bg-yellow-50" },
-            { label: "오프라인", value: stats.offline, emoji: "⭕", bg: "bg-red-50" },
+            { key: "all", label: "전체", emoji: "🤖", bg: "from-slate-800/80 to-slate-900/80", border: "border-slate-700/50" },
+            { key: "active", label: "활성화", emoji: "⚡", bg: "from-emerald-950/50 to-emerald-900/30", border: "border-emerald-700/30" },
+            { key: "busy", label: "작업중", emoji: "🔥", bg: "from-amber-950/50 to-amber-900/30", border: "border-amber-700/30" },
+            { key: "idle", label: "대기", emoji: "⏸️", bg: "from-blue-950/50 to-blue-900/30", border: "border-blue-700/30" },
+            { key: "offline", label: "오프라인", emoji: "💤", bg: "from-red-950/50 to-red-900/30", border: "border-red-700/30" },
           ].map(s => (
-            <div key={s.label} className={`${s.bg} rounded-2xl p-4 text-center border border-slate-100`}>
-              <div className="text-xl mb-1">{s.emoji}</div>
-              <div className="text-2xl font-extrabold text-slate-900">{s.value}</div>
-              <div className="text-xs text-slate-500">{s.label}</div>
-            </div>
+            <button
+              key={s.key}
+              onClick={() => setFilter(s.key)}
+              className={`relative overflow-hidden rounded-xl p-4 text-center border ${s.border} bg-gradient-to-br ${s.bg} backdrop-blur-sm transition-all cursor-pointer ${filter === s.key ? "ring-2 ring-indigo-500/60 scale-[1.02]" : "hover:scale-[1.01]"}`}>
+              <div className="text-lg mb-0.5">{s.emoji}</div>
+              <div className="text-2xl font-extrabold text-white">{filterCounts[s.key as keyof typeof filterCounts]}</div>
+              <div className="text-xs text-slate-400 mt-0.5">{s.label}</div>
+            </button>
           ))}
         </div>
 
-        {/* Agents list */}
+        {/* Agent grid */}
         {agents.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-3xl shadow-sm border border-slate-100">
-            <div className="text-5xl mb-4">👻</div>
-            <h3 className="text-xl font-bold text-slate-900 mb-2">아직 에이전트가 없어요</h3>
-            <p className="text-slate-500 mb-6">첫 번째 에이전트를 등록해보세요!</p>
-            <Link href="/agents/register"
-              className="inline-block bg-purple-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-purple-700 transition-colors">
-              에이전트 만들기 ➜
-            </Link>
+          <div className="text-center py-24 rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-900/50 to-indigo-950/30 relative overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(129,140,248,0.05),transparent_70%)]" />
+            <div className="relative">
+              <div className="text-7xl mb-6">🚀</div>
+              <h3 className="text-2xl font-bold text-white mb-3">에이전트를 시작하세요</h3>
+              <p className="text-slate-400 mb-8 max-w-md mx-auto">첫 번째 AI 에이전트를 등록하여 자동화 워크플로우를 만들어보세요</p>
+              <Link href="/agents/register"
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-8 py-3.5 rounded-xl font-bold hover:shadow-lg hover:shadow-indigo-500/25 transition-all">
+                에이전트 만들기 <span className="text-xl">→</span>
+              </Link>
+            </div>
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-            {agents.map(agent => {
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-12">
+            {filteredAgents.map(agent => {
               const role = getRole(agent.role_id)
-              return (
-                <div key={agent.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow overflow-hidden">
-                  {/* Agent card header */}
-                  <div className="h-2 bg-gradient-to-r" style={{ backgroundColor: role?.color || "#8b5cf6" }} />
+              const statusConfig = {
+                active: { label: "활성화", dot: "bg-emerald-400", pulse: true, ring: "ring-emerald-400/20" },
+                busy: { label: "작업중", dot: "bg-amber-400", pulse: true, ring: "ring-amber-400/20" },
+                idle: { label: "대기", dot: "bg-blue-400", pulse: false, ring: "ring-blue-400/20" },
+                offline: { label: "오프라인", dot: "bg-slate-500", pulse: false, ring: "ring-slate-500/20" },
+              }
+              const status = statusConfig[agent.status] || statusConfig.offline
 
-                  <div className="p-6">
+              return (
+                <div key={agent.id}
+                  className="group relative border border-slate-800 hover:border-indigo-500/40 rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-indigo-500/10 bg-gradient-to-b from-slate-900 to-slate-900/80 backdrop-blur-sm">
+
+                  {/* Role accent bar */}
+                  <div className="h-1 w-full" style={{ background: `linear-gradient(to right, ${role?.color || "#6366f1"}88, ${role?.color || "#6366f1"}22)` }} />
+
+                  <div className="p-5">
+                    {/* Agent identity */}
                     <div className="flex items-start gap-4 mb-4">
-                      {/* Avatar */}
-                      <div className="w-14 h-14 rounded-xl flex-shrink-0 flex items-center justify-center text-white text-xl font-bold"
-                        style={{ backgroundColor: role?.color || "#8b5cf6" }}>
+                      <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 flex items-center justify-center flex-shrink-0 relative group-hover:scale-105 transition-transform">
                         {agent.avatar_url ? (
-                          <img src={agent.avatar_url} className="w-full h-full rounded-xl object-cover" alt={agent.name} />
-                        ) : role?.icon || "🤖"}
+                          <img src={agent.avatar_url} alt={agent.name} className="w-full h-full rounded-xl object-cover" />
+                        ) : (
+                          <span className="text-2xl">{role?.icon || "🤖"}</span>
+                        )}
                       </div>
 
-                      {/* Info */}
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-slate-900 text-lg truncate">{agent.name}</h3>
-                        <p className="text-sm text-slate-500 flex items-center gap-1 mt-1">
+                        <h3 className="font-bold text-white text-lg truncate group-hover:text-indigo-300 transition-colors">
+                          {agent.name}
+                        </h3>
+                        <p className="text-sm text-slate-400 flex items-center gap-1.5 mt-1">
                           <span>{role?.icon}</span>
-                          <span>{role?.name}</span>
+                          <span className="truncate">{role?.name}</span>
                         </p>
                       </div>
 
-                      {/* Status badge */}
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${statusColors[agent.status as keyof typeof statusColors]}`}>
-                        {statusLabels[agent.status as keyof typeof statusLabels]}
-                      </span>
+                      {/* Status indicator */}
+                      <div className={`flex-shrink-0 w-3 h-3 rounded-full ${status.dot} ring-4 ${status.ring} ${status.pulse ? "animate-pulse" : ""}`} />
                     </div>
 
+                    {/* Description */}
                     {agent.description && (
-                      <p className="text-sm text-slate-600 mb-4 line-clamp-2">{agent.description}</p>
+                      <p className="text-sm text-slate-400 mb-4 line-clamp-2 leading-relaxed">{agent.description}</p>
                     )}
 
-                    {/* Stats row */}
+                    {/* Metrics */}
                     <div className="grid grid-cols-3 gap-2 mb-4">
-                      <div className="bg-slate-50 rounded-lg p-2 text-center">
-                        <div className="font-bold text-slate-900">{agent.task_count}</div>
-                        <div className="text-xs text-slate-400">작업</div>
+                      <div className="rounded-lg bg-slate-800/50 px-3 py-2 text-center">
+                        <div className="text-sm font-extrabold text-white">{agent.task_count ?? 0}</div>
+                        <div className="text-[10px] uppercase tracking-wider text-slate-500">작업</div>
                       </div>
-                      <div className="bg-slate-50 rounded-lg p-2 text-center">
-                        <div className="font-bold text-slate-900">{agent.success_rate}%</div>
-                        <div className="text-xs text-slate-400">성공률</div>
+                      <div className="rounded-lg bg-slate-800/50 px-3 py-2 text-center">
+                        <div className="text-sm font-extrabold text-white">{agent.success_rate ?? "—"}%</div>
+                        <div className="text-[10px] uppercase tracking-wider text-slate-500">성공률</div>
                       </div>
-                      <div className="bg-slate-50 rounded-lg p-2 text-center">
-                        <div className="font-bold text-slate-900">{agent.role ? "✅" : "⚠️"}</div>
-                        <div className="text-xs text-slate-400">롤</div>
+                      <div className={`rounded-lg px-3 py-2 text-center ${status.dot === "bg-emerald-400" ? "bg-emerald-950/30" : status.dot === "bg-amber-400" ? "bg-amber-950/30" : status.dot === "bg-blue-400" ? "bg-blue-950/30" : "bg-slate-800/50"}`}>
+                        <div className="text-xs font-bold mt-0.5">{status.label}</div>
+                        <div className="text-[10px] uppercase tracking-wider text-slate-500">상태</div>
                       </div>
                     </div>
 
                     {/* Actions */}
                     <div className="flex gap-2">
                       <Link href={`/agents/chat/${agent.id}`}
-                        className="flex-1 bg-purple-50 text-purple-700 px-4 py-2 rounded-xl text-sm font-bold hover:bg-purple-100 transition-colors text-center">
-                        💬 채팅
+                        className="flex-1 flex items-center justify-center gap-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 px-3 py-2.5 rounded-lg text-sm font-bold transition-colors border border-indigo-500/20">
+                        <span>💬</span> 채팅
                       </Link>
-                      <button onClick={() => changeStatus(agent.id)}
-                        className="flex-1 bg-slate-50 text-slate-700 px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-100 transition-colors">
-                        {agent.status === "offline" ? "켜기" : "끄기"}
+                      <button onClick={() => toggleStatus(agent.id)}
+                        className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-sm font-bold transition-all border ${agent.status === "offline" ? "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20" : "bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/20"}`}>
+                        <span>{agent.status === "offline" ? "▶️" : "⏹️"}</span> {agent.status === "offline" ? "시동" : "정지"}
                       </button>
                     </div>
                   </div>
@@ -175,27 +195,13 @@ export default function AgentsPage() {
           </div>
         )}
 
-        {/* Recent tasks */}
-        {tasks.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-            <h2 className="text-xl font-extrabold text-slate-900 mb-4">📋 최근 작업</h2>
-            <div className="space-y-3">
-              {tasks.slice(0, 5).map(task => (
-                <div key={task.id} className="flex items-center gap-4 p-3 bg-slate-50 rounded-xl">
-                  <span className={`w-3 h-3 rounded-full flex-shrink-0 ${
-                    task.status === "completed" ? "bg-green-500" : task.status === "in_progress" ? "bg-yellow-500 animate-pulse" : task.status === "failed" ? "bg-red-500" : "bg-slate-300"
-                  }`} />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-slate-900 truncate">{task.title}</p>
-                    <p className="text-xs text-slate-500">{new Date(task.created_at).toLocaleString("ko-KR")}</p>
-                  </div>
-                  <span className={`text-xs font-bold px-2 py-1 rounded ${
-                    task.priority === "urgent" ? "bg-red-100 text-red-700" : task.priority === "high" ? "bg-orange-100 text-orange-700" : "bg-slate-100 text-slate-600"
-                  }`}>
-                    {task.type}
-                  </span>
-                </div>
-              ))}
+        {/* Summary info */}
+        {agents.length > 0 && (
+          <div className="text-center pb-8">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-800/50 border border-slate-700/50 text-sm text-slate-400">
+              <span>{agents.length}개 에이전트</span>
+              <span className="text-slate-600">•</span>
+              <span>{filter === "all" ? "전체 보기" : `${filterCounts[filter as keyof typeof filterCounts]}개 필터}`}</span>
             </div>
           </div>
         )}
@@ -204,7 +210,7 @@ export default function AgentsPage() {
   )
 }
 
-async function changeStatus(agentId: string) {
+async function toggleStatus(agentId: string) {
   try {
     await fetch("/api/agents", {
       method: "PUT",
