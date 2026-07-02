@@ -24,7 +24,7 @@ export default function EmployeesPage() {
         if (!res.ok) throw new Error('직원 정보를 불러오지 못했습니다')
         const data = await res.json()
         setEmployees(data)
-      } catch (err) {
+      } catch (err: any) {
         setError(err.message)
       } finally {
         setLoading(false)
@@ -37,7 +37,7 @@ export default function EmployeesPage() {
         if (!res.ok) throw new Error('역할 정보를 불러오지 못했습니다')
         const data = await res.json()
         setRoles(data)
-      } catch (err) {
+      } catch (err: any) {
         setError(err.message)
       }
     }
@@ -67,7 +67,7 @@ export default function EmployeesPage() {
       setEmployees(prev => [...prev, newEmployee])
       setFormData({ name: '', email: '', role: '', status: 'active' })
       setIsAdding(false)
-    } catch (err) {
+    } catch (err: any) {
       setError(err.message)
     }
   }

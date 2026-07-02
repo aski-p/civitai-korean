@@ -218,7 +218,7 @@ async function toggleStatus(agentId: string) {
       body: JSON.stringify({ id: agentId, status: "offline" }),
     })
     location.reload()
-  } catch (err) {
+  } catch (err: any) {
     console.error("상태 변경 실패:", err)
   }
 }

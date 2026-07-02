@@ -61,7 +61,7 @@ export default function AgentChatPage() {
         const name = localAgent?.name || "에이전트"
         setMessages([{ role: "assistant", content: `${name}이(가) 준비되었습니다! 명령을 입력하세요.`, timestamp: new Date().toISOString() }])
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("에이전트 정보 로딩 실패:", err)
     }
   }
